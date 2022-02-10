@@ -3,15 +3,21 @@ from tkinter import messagebox
 import psycopg
 
 with open('kwd.txt', 'r') as kwd:
-    pwd = kwd.readline()
+    infos = kwd.readlines()
+    dbhost = infos[0].strip()
+    db = infos[1].strip()
+    dbuser = infos[2].strip()
+    pwd = infos[3].strip()
     kwd.close()
 
+
 def connect_db():
-    con = psycopg.connect(host="localhost",
-                          dbname="empresa",
-                          user="postgres",
+    con = psycopg.connect(host=dbhost,
+                          dbname=db,
+                          user=dbuser,
                           password=pwd)
     return con
+
 
 def get_list():
     clear_list(limpardados=False)
@@ -45,8 +51,11 @@ def add_client():
     servico = e_servico.get()
 
     cur = con.cursor()
-    cur.execute("INSERT INTO clientes (cliente_id, nome, cpf, telefone, endereco, email, servico)"
-                f"VALUES(%s, %s, %s, %s, %s, %s, %s)", (id_cliente, nome, cpf, telefone, endereco, email, servico))
+    try:
+        cur.execute("INSERT INTO clientes (cliente_id, nome, cpf, telefone, endereco, email, servico)"
+                    f"VALUES(%s, %s, %s, %s, %s, %s, %s)", (id_cliente, nome, cpf, telefone, endereco, email, servico))
+    except psycopg.errors.UniqueViolation:
+        messagebox.showerror('UniqueViolation', message='CPF já foi cadastrado préviamente')
     cur.close()
     con.commit()
     con.close()
@@ -68,15 +77,17 @@ def update_client():
     dados.append(e_servico.get())
     for elemento in dados:
         elemento.replace('', 'null')
-
-    cur.execute("UPDATE clientes "
-                f"SET nome = '{dados[1]}', "
-                f"cpf = '{dados[2]}', "
-                f"telefone = '{dados[3]}', "
-                f"endereco = '{dados[4]}', "
-                f"email = '{dados[5]}', "
-                f"servico = '{dados[6]}' "
-                f"WHERE cliente_id = {dados[0]};")
+    try:
+        cur.execute("UPDATE clientes "
+                    f"SET nome = '{dados[1]}', "
+                    f"cpf = '{dados[2]}', "
+                    f"telefone = '{dados[3]}', "
+                    f"endereco = '{dados[4]}', "
+                    f"email = '{dados[5]}', "
+                    f"servico = '{dados[6]}' "
+                    f"WHERE cliente_id = {dados[0]};")
+    except psycopg.errors.UniqueViolation:
+        messagebox.showerror('UniqueViolation', message='CPF já foi cadastrado préviamente')
     cur.close()
     con.commit()
     con.close()
@@ -230,7 +241,7 @@ insert = Button(root, text="Adicionar", font=("italic", 10), bg="white", command
 insert.place(x=20, y=300)
 
 delete = Button(root, text='Deletar Cliente', font=("italic", 10), bg="white", command=remove_user)
-delete.place(x=500, y=300)
+delete.place(x=600, y=330)
 
 update = Button(root, text='Atualizar', font=("italic", 10), bg="white", command=update_client)
 update.place(x=90, y=300)
@@ -243,7 +254,7 @@ clear.place(x=235, y=300)
 
 checkbox_status = IntVar()
 checkbox = Checkbutton(root, text='MODIFICAR TABELA', variable=checkbox_status)
-checkbox.place(x=460, y=250)
+checkbox.place(x=20, y=250)
 
 lista = Listbox(root, width=50)
 lista.place(x=390, y=30)
