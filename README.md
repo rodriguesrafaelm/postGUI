@@ -1,5 +1,5 @@
 # postGUI
-*CRUD com Interface usando PostgresSQL e tkinter.*
+*CRUD com Interface usando PostgreSQL e tkinter.*
 
 - Python3
 
