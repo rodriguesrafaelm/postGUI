@@ -2,16 +2,15 @@ from tkinter import *
 from tkinter import messagebox
 import psycopg
 
-with open('kwd.txt', 'r') as kwd:
+with open('kwd.txt', 'r') as kwd: #kwd.txt é um arquivo no formato -> "host", "nome do bd", "usuario", "senha"
     infos = kwd.readlines()
     dbhost = infos[0].strip()
     db = infos[1].strip()
     dbuser = infos[2].strip()
     pwd = infos[3].strip()
-    kwd.close()
 
 
-def connect_db():
+def connect_db(): #conector
     con = psycopg.connect(host=dbhost,
                           dbname=db,
                           user=dbuser,
@@ -79,13 +78,14 @@ def update_client():
         elemento.replace('', 'null')
     try:
         cur.execute("UPDATE clientes "
-                    f"SET nome = '{dados[1]}', "
-                    f"cpf = '{dados[2]}', "
-                    f"telefone = '{dados[3]}', "
-                    f"endereco = '{dados[4]}', "
-                    f"email = '{dados[5]}', "
-                    f"servico = '{dados[6]}' "
-                    f"WHERE cliente_id = {dados[0]};")
+                    f"SET nome = %s, "
+                    f"cpf = %s, "
+                    f"telefone = %s, "
+                    f"endereco = %s, "
+                    f"email = %s, "
+                    f"servico = %s "
+                    f"WHERE cliente_id = %s;", ([dados[1],dados[2] ,dados[3] ,dados[4] ,dados[5] ,dados[6]
+                    ,dados[0]]))
     except psycopg.errors.UniqueViolation:
         messagebox.showerror('UniqueViolation', message='CPF já foi cadastrado préviamente')
     cur.close()
@@ -110,18 +110,20 @@ def get_person():
 
     con = connect_db()
     cur = con.cursor()
-    cur.execute("SELECT * FROM clientes "
-                f"WHERE {coluna} = '{dado}'")
+    cur.execute(f"SELECT * FROM clientes WHERE {coluna} = %s;", ([dado]))
     cliente = cur.fetchone()
     clear_list()
-    lista.insert(0, cliente)
-    e_id.insert(0, cliente[0])
-    e_name.insert(0, cliente[1])
-    e_cpf.insert(0, cliente[2])
-    e_phone.insert(0, cliente[3])
-    e_end.insert(0, cliente[4])
-    e_email.insert(0, cliente[5])
-    e_servico.insert(0, cliente[6])
+    if cliente:
+        lista.insert(0, cliente)
+        e_id.insert(0, cliente[0])
+        e_name.insert(0, cliente[1])
+        e_cpf.insert(0, cliente[2])
+        e_phone.insert(0, cliente[3])
+        e_end.insert(0, cliente[4])
+        e_email.insert(0, cliente[5])
+        e_servico.insert(0, cliente[6])
+    else:
+        messagebox.showerror('Falha na busca', message='Verifique os dados inseridos e tente novamente')
     cur.close()
     con.close()
 
@@ -142,7 +144,7 @@ def remove_user():
     con = connect_db()
     cur = con.cursor()
     cur.execute("DELETE FROM clientes "
-                f"WHERE cliente_id = {id_cliente};")
+                f"WHERE cliente_id = %s;", id_cliente)
     cur.close()
     con.commit()
     con.close()
@@ -162,10 +164,9 @@ def clear_list(limparlista=True, limpardados=True):
         lista.delete('0', 'end')
 
 
-def onselect(evt):
-    # Note here that Tkinter passes an event object to onselect()
+def onselect(event):
     try:
-        w = evt.widget
+        w = event.widget
         index = int(w.curselection()[0])
         value = int(w.get(index)[0]) -1
         clear_list(limparlista=False)
@@ -179,87 +180,59 @@ def onselect(evt):
     except IndexError:
         pass
 
-
-
+# Parte de configuração do GUI
 root = Tk()
 root.geometry("700x400")
 root.title("SQL PYTHON TEST")
-
 idlista = Label(root, text='ID do Cliente', font=('bold', 8))
 idlista.place(x=390, y=15)
-
 nomelista = Label(root, text='Nome do cliente', font=('bold', 8))
 nomelista.place(x=470, y=15)
-
-
 id = Label(root, text='Cliente ID', font=('bold', 10))
 id.place(x=20, y=30)
-
 name = Label(root, text='Nome', font=('Bold', 10))
 name.place(x=20, y=60)
-
 phone = Label(root, text='Telefone', font=('Bold', 10))
 phone.place(x=20, y=90)
-
 cpf = Label(root, text='CPF', font=('Bold', 10))
 cpf.place(x=20, y=120)
-
 end = Label(root, text='Endereço', font=('Bold', 10))
 end.place(x=20, y=150)
-
 email = Label(root, text='Email', font=('Bold', 10))
 email.place(x=20, y=180)
-
 servico = Label(root, text='Serviços em Aberto', font=('Bold', 10))
 servico.place(x=20, y=210)
-
 e_id = Entry()
 e_id.place(x=150, y=30)
-
 e_name = Entry()
 e_name.place(x=150, y=60)
-
 e_phone = Entry()
 e_phone.place(x=150, y=90)
-
 e_cpf = Entry()
 e_cpf.place(x=150, y=120)
-
 e_end = Entry()
 e_end.place(x=150, y=150)
-
 e_email = Entry()
 e_email.place(x=150, y=180)
-
 e_servico = Entry()
 e_servico.place(x=150, y=210)
-
 exibirlista = Button(root, text="Mostrar Todos", font=("italic", 10), bg="white", command=get_list)
 exibirlista.place(x=18, y=340)
-
 insert = Button(root, text="Adicionar", font=("italic", 10), bg="white", command=add_client)
 insert.place(x=20, y=300)
-
 delete = Button(root, text='Deletar Cliente', font=("italic", 10), bg="white", command=remove_user)
 delete.place(x=600, y=330)
-
 update = Button(root, text='Atualizar', font=("italic", 10), bg="white", command=update_client)
 update.place(x=90, y=300)
-
 get = Button(root, text='Buscar', font=("italic", 10), bg="white", command=get_person)
 get.place(x=180, y=300)
-
 clear = Button(root, text='Limpar', font=("italic", 10), bg="white", command=clear_list)
 clear.place(x=235, y=300)
-
 checkbox_status = IntVar()
 checkbox = Checkbutton(root, text='MODIFICAR TABELA', variable=checkbox_status)
 checkbox.place(x=20, y=250)
-
 lista = Listbox(root, width=50)
 lista.place(x=390, y=30)
 lista.bind("<<ListboxSelect>>", onselect)
-
 get_list()  # First fetch to set variables
-
 root.mainloop()
