@@ -20,16 +20,21 @@ def connect_db(): #conector
 
 def get_list():
     clear_list(limpardados=False)
-    con = connect_db()
-    cur = con.cursor()
-    cur.execute("SELECT * FROM clientes "
-                "ORDER BY cliente_id")
-    global row
-    row = cur.fetchall()
-    cur.close()
-    for item in reversed(row):
-        lista.insert(0, f'{item[0]:<27}{item[1]}')
-    con.close()
+    try:
+        con = connect_db()
+        cur = con.cursor()
+        cur.execute("SELECT * FROM clientes "
+                    "ORDER BY cliente_id")
+        global row
+        row = cur.fetchall()
+        for item in reversed(row):
+            lista.insert(0, f'{item[0]:<27}{item[1]}')
+    except Exception as erro:
+        print(erro)
+    finally:
+        if con:
+            cur.close()
+            con.close()
 
 
 def add_client():
@@ -37,7 +42,7 @@ def add_client():
         messagebox.showerror('Caixa de seleção', message='Marque a caixa "MODIFICAR TABELA" para continuar.')
         return
     if e_name.get() == '' or e_cpf.get() == '':
-        messagebox.showerror('Falta de dados', message='Nome ou CPF em branco.')
+        messagebox.showerror('Ausencia de dados', message='Nome ou CPF em branco.')
         return
 
     con = connect_db()
@@ -53,12 +58,14 @@ def add_client():
     try:
         cur.execute("INSERT INTO clientes (cliente_id, nome, cpf, telefone, endereco, email, servico)"
                     f"VALUES(%s, %s, %s, %s, %s, %s, %s)", (id_cliente, nome, cpf, telefone, endereco, email, servico))
+        con.commit()
     except psycopg.errors.UniqueViolation:
         messagebox.showerror('UniqueViolation', message='CPF já foi cadastrado préviamente')
-    cur.close()
-    con.commit()
-    con.close()
-
+    finally:
+        if con:
+            cur.close()
+            con.close()
+        get_list()
 
 def update_client():
     if checkbox_status.get() == 0:
@@ -77,21 +84,16 @@ def update_client():
     for elemento in dados:
         elemento.replace('', 'null')
     try:
-        cur.execute("UPDATE clientes "
-                    f"SET nome = %s, "
-                    f"cpf = %s, "
-                    f"telefone = %s, "
-                    f"endereco = %s, "
-                    f"email = %s, "
-                    f"servico = %s "
-                    f"WHERE cliente_id = %s;", ([dados[1],dados[2] ,dados[3] ,dados[4] ,dados[5] ,dados[6]
-                    ,dados[0]]))
+        cur.execute("UPDATE clientes SET nome = %s, cpf = %s, telefone = %s, endereco = %s, email = %s, servico = %s "
+                    "WHERE cliente_id = %s;", ([dados[1], dados[2], dados[3], dados[4], dados[5], dados[6], dados[0]]))
+        con.commit()
     except psycopg.errors.UniqueViolation:
         messagebox.showerror('UniqueViolation', message='CPF já foi cadastrado préviamente')
-    cur.close()
-    con.commit()
-    con.close()
-    get_list()
+    finally:
+        if con:
+            cur.close()
+            con.close()
+        get_list()
 
 
 def get_person():
@@ -107,25 +109,27 @@ def get_person():
     else:
         messagebox.showerror('Ausência de dados', message='Insira ID, Nome ou CPF para buscar.')
         return
-
     con = connect_db()
     cur = con.cursor()
-    cur.execute(f"SELECT * FROM clientes WHERE {coluna} = %s;", ([dado]))
-    cliente = cur.fetchone()
-    clear_list()
-    if cliente:
-        lista.insert(0, cliente)
-        e_id.insert(0, cliente[0])
-        e_name.insert(0, cliente[1])
-        e_cpf.insert(0, cliente[2])
-        e_phone.insert(0, cliente[3])
-        e_end.insert(0, cliente[4])
-        e_email.insert(0, cliente[5])
-        e_servico.insert(0, cliente[6])
-    else:
-        messagebox.showerror('Falha na busca', message='Verifique os dados inseridos e tente novamente')
-    cur.close()
-    con.close()
+    try:
+        cur.execute(f"SELECT * FROM clientes WHERE {coluna} = %s;", ([dado]))
+        cliente = cur.fetchone()
+        clear_list()
+        if cliente:
+            lista.insert(0, cliente)
+            e_id.insert(0, cliente[0])
+            e_name.insert(0, cliente[1])
+            e_cpf.insert(0, cliente[2])
+            e_phone.insert(0, cliente[3])
+            e_end.insert(0, cliente[4])
+            e_email.insert(0, cliente[5])
+            e_servico.insert(0, cliente[6])
+        else:
+            messagebox.showerror('Falha na busca', message='Verifique os dados inseridos e tente novamente')
+    finally:
+        if con:
+            cur.close()
+            con.close()
 
 
 def remove_user():
@@ -143,13 +147,15 @@ def remove_user():
 
     con = connect_db()
     cur = con.cursor()
-    cur.execute("DELETE FROM clientes "
-                f"WHERE cliente_id = %s;", id_cliente)
-    cur.close()
-    con.commit()
-    con.close()
-    clear_list()
-
+    try:
+        cur.execute("DELETE FROM clientes "
+                    f"WHERE cliente_id = %s;", [id_cliente])
+        con.commit()
+    finally:
+        if con:
+            cur.close()
+            con.close()
+        get_list()
 
 def clear_list(limparlista=True, limpardados=True):
     if limpardados:
@@ -183,12 +189,12 @@ def onselect(event):
 # Parte de configuração do GUI
 root = Tk()
 root.geometry("700x400")
-root.title("SQL PYTHON TEST")
+root.title("Consulta de dados")
 idlista = Label(root, text='ID do Cliente', font=('bold', 8))
 idlista.place(x=390, y=15)
 nomelista = Label(root, text='Nome do cliente', font=('bold', 8))
 nomelista.place(x=470, y=15)
-id = Label(root, text='Cliente ID', font=('bold', 10))
+id = Label(root, text='ID do cliente', font=('bold', 10))
 id.place(x=20, y=30)
 name = Label(root, text='Nome', font=('Bold', 10))
 name.place(x=20, y=60)
